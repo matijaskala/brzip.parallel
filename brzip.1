@@ -1,0 +1,135 @@
+.TH BRZIP 1 "October 2020"
+.SH NAME
+brzip, brunzip, brcat - Compress or decompress .br files
+.SH SYNOPSIS
+.ll +8
+.B brzip
+.RB [ " \-cdfhk " ]
+[
+.I "filenames \&..."
+]
+.ll -8
+.br
+.B brunzip
+.RB [ " \-cfhk " ]
+[
+.I "filenames \&..."
+]
+.br
+.B brcat
+.RB [ " \-h " ]
+[
+.I "filenames \&..."
+]
+
+.SH DECRIPTION
+.I brzip
+compresses files using Brotli algorithm.  Compression is
+comparable to the best currently available general-purpose
+compression methods.  Decompression speed is comparable to deflate.
+
+The command-line options are similar to those of
+.BR gzip (1)
+and
+.BR bzip2 (1).
+
+.I brzip
+expects a list of file names to accompany the
+command-line flags.  Each file is replaced by a compressed version of
+itself, with the name "original_name.br".  
+Each compressed file has the same
+modification date and permissions as the corresponding original.
+
+.I brzip
+and
+.I brunzip
+will by default not overwrite existing
+files.  If you want this to happen, specify the \-f flag.
+
+If no file names are specified,
+.I brzip
+compresses from standard
+input to standard output.
+
+.I brunzip
+(or
+.I brzip \-d)
+decompresses all
+specified files.  Files which were not created by
+.I brzip
+will be detected and ignored.
+
+As with compression, supplying no
+filenames causes decompression from
+standard input to standard output.
+
+You can also compress or decompress files to the standard output by
+giving the \-c flag.  Multiple files may be compressed and
+decompressed like this.  The resulting outputs are fed sequentially to
+stdout.
+
+.I brcat
+(or
+.I brzip -dc)
+decompresses all specified files to
+the standard output.
+
+.SH OPTIONS
+.TP
+.B \-c --stdout --to-stdout
+Compress or decompress to standard output.
+.TP
+.B \-d --decompress
+Decompress.
+.TP
+.B \-f --force
+Force overwrite of output files.  Normally,
+.I brzip
+will not overwrite
+existing output files.
+.TP
+.B \-h --help
+Display a help screen and quit.
+.TP
+.B \-k --keep
+Keep (don't delete) input files during compression or decompression.
+.TP
+.B \-# --fast --best
+Regulate the speed of compression using the specified digit
+.IR # ,
+where
+.B \-0
+or
+.B \-\-fast
+indicates the fastest compression method (less compression)
+and
+.B \-11
+or
+.B \-\-best
+indicates the slowest compression method (best compression).
+The default compression level is
+.BR \-9 .
+.TP
+.B \-B# --block-size=#
+Split input data into blocks of size
+.IR #
+bytes (default: 4194304).
+.TP
+.B \-T# --threads=#
+Compress using
+.IR #
+working threads (default: 1). If
+.IR #
+is 0, use as many threads as there are CPU cores on the system.
+.SH AUTHOR
+Matija Skala <mskala@gmx.com>
+.SH "REPORTING BUGS"
+Report bugs at https://github.com/matijaskala/brzip.parallel/issues
+.SH COPYRIGHT
+Copyright \(co 2020 Matija Skala.  License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+.br
+This is free software: you are free to change and redistribute it.  There is NO WARRANTY, to the extent permitted by law.
+.SH "SEE ALSO"
+brzip uses Brotli .br Framing Format Version 3, created by Mark Adler:
+.br
+.BR https://github.com/madler/brotli/blob/501e6a9d03bcc15f0bc8015f4f36054c30f699ca/br-format-v3.txt
