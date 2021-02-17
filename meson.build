@@ -7,7 +7,7 @@ libxxhash = dependency('libxxhash')
 threads = dependency('threads')
 deps = [libbrotlienc, libbrotlidec, libmd, libxxhash, threads]
 
-brzip = executable('brzip', 'brzip.c', 'crc32c.c', c_args: '-D_FILE_OFFSET_BITS=64', dependencies: deps, install: true)
+brzip = executable('brzip', 'brzip.c', 'gsb_crc32.c', c_args: '-D_FILE_OFFSET_BITS=64', dependencies: deps, install: true)
 
 install_man('brzip.1')
 

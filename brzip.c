@@ -36,8 +36,7 @@
 #include <brotli/encode.h>
 #include <pthread.h>
 #include <xxhash.h>
-
-uint32_t crc32c_le(uint32_t crc, const uint8_t *data, size_t length);
+#include "gsb_crc32.h"
 
 typedef struct {
 	uint8_t *data;
@@ -636,7 +635,7 @@ static void *decomp_worker(courier_t arg) {
 				case 4:
 				case 5:
 				case 6:
-					crc32csum = ~crc32c_le(~0, output_buffer, next_out - output_buffer);
+					crc32csum = ~calculate_crc32c(~0, output_buffer, next_out - output_buffer);
 					for (uint8_t i = 0; i < 1 << (check_type - 4); i++) {
 						if (!available_in) {
 							warnx("%s: incomplete block", arg->input_str);
@@ -856,7 +855,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 		err(1, "XXH64_createState");
 	XXH32_reset(xxh32full, 0);
 	XXH64_reset(xxh64full, 0);
-	uint32_t crc32cfull = ~crc32c_le(~0, NULL, 0);
+	uint32_t crc32cfull = ~calculate_crc32c(~0, NULL, 0);
 	size_t total_size = 0;
 	size_t input_buffer_length = 1 << 18;
 	size_t output_buffer_length = 1 << 18;
@@ -873,7 +872,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 	}
 	for (;;) {
 		SHA256_CTX sha256;
-		uint32_t crc32csum = ~crc32c_le(~0, NULL, 0);
+		uint32_t crc32csum = ~calculate_crc32c(~0, NULL, 0);
 		uint64_t block_size = 0;
 		uint64_t old_offset = offset;
 		offset = 0;
@@ -1164,7 +1163,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 							case 4:
 							case 5:
 							case 6:
-								crc32csum = ~crc32c_le(~crc32csum, output_buffer, len);
+								crc32csum = ~calculate_crc32c(~crc32csum, output_buffer, len);
 								break;
 							case 7:
 								SHA256_Update(&sha256, output_buffer, len);
@@ -1188,7 +1187,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				case 4:
 				case 5:
 				case 6:
-					crc32csum = ~crc32c_le(~crc32csum, output_buffer, len);
+					crc32csum = ~calculate_crc32c(~crc32csum, output_buffer, len);
 					break;
 				case 7:
 					SHA256_Update(&sha256, output_buffer, len);
@@ -1273,7 +1272,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 1 << check_type);
 				XXH64_update(xxh64full, digest, 1 << check_type);
-				crc32csum = ~crc32c_le(~crc32cfull, digest, 1 << check_type);
+				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 1 << check_type);
 				break;
 			case 3:
 				xxh64sum = XXH64_digest(xxh64);
@@ -1296,7 +1295,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 1 << check_type);
 				XXH64_update(xxh64full, digest, 1 << check_type);
-				crc32csum = ~crc32c_le(~crc32cfull, digest, 1 << check_type);
+				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 1 << check_type);
 				break;
 			case 4:
 			case 5:
@@ -1320,7 +1319,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 1 << (check_type - 4));
 				XXH64_update(xxh64full, digest, 1 << (check_type - 4));
-				crc32csum = ~crc32c_le(~crc32cfull, digest, 1 << (check_type - 4));
+				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 1 << (check_type - 4));
 				break;
 			case 7:
 				if (content_mask & 040)
@@ -1344,7 +1343,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 32);
 				XXH64_update(xxh64full, digest, 32);
-				crc32csum = ~crc32c_le(~crc32cfull, digest, 32);
+				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 32);
 				break;
 			default:
 				warnx("%s: corrupt input", input_str);
