@@ -22,7 +22,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
+#ifdef USE_LIBMD
 #include <sha256.h>
+#else
+#include <openssl/sha.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

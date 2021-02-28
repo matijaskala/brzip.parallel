@@ -2,10 +2,18 @@ project('brzip', 'c', version: '0.1')
 
 libbrotlienc = dependency('libbrotlienc')
 libbrotlidec = dependency('libbrotlidec')
-libmd = dependency('libmd')
 libxxhash = dependency('libxxhash')
+if get_option('libmd')
+	sha256 = dependency('libmd')
+else
+	sha256 = dependency('libcrypto')
+endif
 threads = dependency('threads')
-deps = [libbrotlienc, libbrotlidec, libmd, libxxhash, threads]
+deps = [libbrotlienc, libbrotlidec, libxxhash, sha256, threads]
+
+if get_option('libmd')
+	add_project_arguments('-DUSE_LIBMD', language: 'c')
+endif
 
 brzip = executable('brzip', 'brzip.c', 'gsb_crc32.c', c_args: '-D_FILE_OFFSET_BITS=64', dependencies: deps, install: true)
 
