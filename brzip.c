@@ -2059,10 +2059,13 @@ int main(int argc, char **argv) {
 	bool to_stdout = false;
 	uint32_t block_size = 0;
 	uint32_t nthreads = 0;
-	if (tolower(argv[0][0]) == 'b' && tolower(argv[0][1]) == 'r') {
-		if (tolower(argv[0][2]) == 'c' && tolower(argv[0][3]) == 'a' && tolower(argv[0][4]) == 't')
+	const char *appname = strrchr(argv[0], '/');
+	if (!appname++)
+		appname = argv[0];
+	if (tolower(appname[0]) == 'b' && tolower(appname[1]) == 'r') {
+		if (tolower(appname[2]) == 'c' && tolower(appname[3]) == 'a' && tolower(appname[4]) == 't')
 			to_stdout = decompress = true;
-		if (tolower(argv[0][2]) == 'u' && tolower(argv[0][3]) == 'n' && tolower(argv[0][4]) == 'z' && tolower(argv[0][5]) == 'i' && tolower(argv[0][6]) == 'p')
+		if (tolower(appname[2]) == 'u' && tolower(appname[3]) == 'n' && tolower(appname[4]) == 'z' && tolower(appname[5]) == 'i' && tolower(appname[6]) == 'p')
 			decompress = true;
 	}
 	for (int i = 1; i < argc; i++)
