@@ -1,1 +1,1 @@
-option('libmd', type: 'boolean', value: 'false', description: 'Link against libmd instead of libcrypto')
+option('libmd', type: 'boolean', value: 'true', description: 'Link against libmd instead of libcrypto')
