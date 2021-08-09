@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <signal.h>
 #ifdef USE_LIBMD
 #include <sha256.h>
 #else
@@ -92,6 +93,13 @@ typedef struct _courier *courier_t;
 static int64_t leap_seconds[][2] = {
 #include "leap_seconds.h"
 };
+
+static char *output_file = NULL;
+static void free_global(char **ptr) {
+	void *p = *ptr;
+	*ptr = NULL;
+	free(p);
+}
 
 static time_t tai64tounix(int64_t t) {
 	t += 2208988800;
@@ -1408,8 +1416,8 @@ static bool brzip_decompress_stdin() {
 
 static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, bool to_stdout, bool keep, bool force) {
 	FILE *in = NULL, *out = NULL;
-	char *output_file = NULL;
 	struct stat st;
+	char *f = NULL;
 	struct timespec times[2];
 	if (to_stdout) {
 		in = fopen(input_file, "rb");
@@ -1567,27 +1575,27 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 					const char *p = strrchr(input_file, '/');
 					if (!p)
 						p = input_file;
-					output_file = malloc(p - input_file + v + 1);
-					if (!output_file)
+					f = malloc(p - input_file + v + 1);
+					if (!f)
 						err(1, "malloc");
-					memcpy(output_file, input_file, p - input_file);
-					strcat(output_file, filename);
+					memcpy(f, input_file, p - input_file);
+					strcat(f, filename);
 				}
 				free(filename);
 			}
 		}
-		if (!output_file) {
-			output_file = strdup(input_file);
+		if (!f) {
+			f = strdup(input_file);
 			if (!output_file)
 				err(1, "strdup");
 			size_t l = strlen(output_file);
-			if (l >= 4 && output_file[l-3] == '.' && output_file[l-2] == 'b' && output_file[l-2] == 'r')
-				output_file[l-3] = 0;
-			else if (l >= 5 && output_file[l-4] == '.' && output_file[l-3] == 't' && output_file[l-2] == 'b' && output_file[l-2] == 'r')
-				output_file[l-3] = 'a';
+			if (l >= 4 && f[l-3] == '.' && f[l-2] == 'b' && f[l-2] == 'r')
+				f[l-3] = 0;
+			else if (l >= 5 && f[l-4] == '.' && f[l-3] == 't' && f[l-2] == 'b' && f[l-2] == 'r')
+				f[l-3] = 'a';
 			else {
 				warnx("%s: unknown suffix -- ignored", input_file);
-				free(output_file);
+				free(f);
 				if (fclose(in) < 0)
 					err(1, "%s", input_file);
 				return false;
@@ -1595,16 +1603,17 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 		}
 		int outfd = open(output_file, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL), 0600);
 		if (outfd < 0) {
-			warn("%s", output_file);
-			free(output_file);
+			warn("%s", f);
+			free(f);
 			if (fclose(in) < 0)
 				err(1, "%s", input_file);
 			return false;
 		}
+		output_file = f;
 		out = fdopen(outfd, "wb");
 		if (!out) {
 			warn("%s", output_file);
-			free(output_file);
+			free_global(&output_file);
 			if (fclose(in) < 0)
 				err(1, "%s", input_file);
 			if (close(outfd) < 0)
@@ -1628,7 +1637,7 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 				warn("%s", output_file);
 			if (fclose(out) < 0)
 				err(1, "%s", output_file);
-			free(output_file);
+			free_global(&output_file);
 			if (!keep && unlink(input_file) < 0)
 				err(1, "%s", input_file);
 		}
@@ -1666,7 +1675,7 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 				warn("%s", output_file);
 			if (fclose(out) < 0)
 				err(1, "%s", output_file);
-			free(output_file);
+			free_global(&output_file);
 			if (!keep && unlink(input_file) < 0)
 				err(1, "%s", input_file);
 		}
@@ -1781,7 +1790,7 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 					warn("%s", output_file);
 				if (fclose(out) < 0)
 					err(1, "%s", output_file);
-				free(output_file);
+				free_global(&output_file);
 				if (!keep && unlink(input_file) < 0)
 					err(1, "%s", input_file);
 			}
@@ -1883,7 +1892,7 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 			warn("%s", output_file);
 		if (fclose(out) < 0)
 			err(1, "%s", output_file);
-		free(output_file);
+		free_global(&output_file);
 		if (!keep && unlink(input_file) < 0)
 			err(1, "%s", input_file);
 	}
@@ -1897,7 +1906,7 @@ fail:
 			err(1, "%s", output_file);
 		if (unlink(output_file) < 0)
 			err(1, "%s", output_file);
-		free(output_file);
+		free_global(&output_file);
 	}
 	return false;
 }
@@ -1928,7 +1937,6 @@ static bool brzip_compress_stdin(uint8_t quality, uint32_t nthreads, uint32_t bl
 
 static bool brzip_compress_file(uint8_t quality, uint32_t nthreads, uint32_t block_size, const char *input_file, bool to_stdout, bool keep, bool force) {
 	FILE *in = fopen(input_file, "rb"), *out = NULL;
-	char output_file[strlen(input_file) + 4];
 	char filename[strlen(input_file) + 1];
 	struct timespec times[2];
 	if (!in) {
@@ -1941,16 +1949,19 @@ static bool brzip_compress_file(uint8_t quality, uint32_t nthreads, uint32_t blo
 		out = stdout;
 	}
 	else {
+		size_t input_file_l = strlen(input_file);
+		char *f = malloc(input_file_l + 4);
 		lstat(input_file, &st);
-		if (snprintf(output_file, sizeof output_file, "%s.br", input_file) != (int)sizeof output_file - 1)
+		if (snprintf(f, input_file_l + 4, "%s.br", input_file) != (int)input_file_l + 3)
 			err(1, NULL);
-		int outfd = open(output_file, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL), 0600);
+		int outfd = open(f, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL), 0600);
 		if (outfd < 0) {
-			warn("%s", output_file);
+			warn("%s", f);
 			if (fclose(in) < 0)
 				err(1, "%s", input_file);
 			return false;
 		}
+		output_file = f;
 		out = fdopen(outfd, "wb");
 		if (!out) {
 			warn("%s", output_file);
@@ -1985,6 +1996,7 @@ static bool brzip_compress_file(uint8_t quality, uint32_t nthreads, uint32_t blo
 						err(1, "%s", output_file);
 					if (unlink(output_file) < 0)
 						err(1, "%s", output_file);
+					free_global(&output_file);
 				}
 				return false;
 			}
@@ -1999,6 +2011,7 @@ static bool brzip_compress_file(uint8_t quality, uint32_t nthreads, uint32_t blo
 					err(1, "%s", output_file);
 				if (!keep && unlink(input_file) < 0)
 					err(1, "%s", input_file);
+				free_global(&output_file);
 			}
 			return true;
 		}
@@ -2012,6 +2025,7 @@ static bool brzip_compress_file(uint8_t quality, uint32_t nthreads, uint32_t blo
 					err(1, "%s", output_file);
 				if (unlink(output_file) < 0)
 					err(1, "%s", output_file);
+				free_global(&output_file);
 			}
 			return false;
 		}
@@ -2024,6 +2038,7 @@ static bool brzip_compress_file(uint8_t quality, uint32_t nthreads, uint32_t blo
 					err(1, "%s", output_file);
 				if (unlink(output_file) < 0)
 					err(1, "%s", output_file);
+				free_global(&output_file);
 			}
 			return false;
 		}
@@ -2047,6 +2062,12 @@ void print_help() {
 
 void usage() {
 	print_help();
+	exit(1);
+}
+
+void on_interrupt() {
+	if (output_file)
+		unlink(output_file);
 	exit(1);
 }
 
@@ -2242,6 +2263,9 @@ int main(int argc, char **argv) {
 		keep = true;
 	bool from_stdin = true;
 	bool error = false;
+	struct sigaction sa_old, sa = { .sa_handler = on_interrupt, .sa_flags = 0 };
+	sigaction(SIGINT, &sa, &sa_old);
+	sigaction(SIGTERM, &sa, &sa_old);
 	for (int i = 1; i < argc; i++) {
 		if (argv[i][0] == '-' && argv[i][1] != 0 && !opts_end) {
 			if (argv[i][1] == '-' && argv[i][2] == 0)
