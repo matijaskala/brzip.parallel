@@ -46,11 +46,10 @@
 
 #include <stdint.h>
 #include <sys/param.h>
+#include "gsb_crc32.h"
 #if defined(__amd64__) || defined(__i386__)
 #include <cpuid.h>
 #endif
-#include "gsb_crc32.h"
-#define _STANDALONE
 
 
 /* CRC32C routines, these use a different polynomial */
@@ -687,11 +686,6 @@ calculate_crc32c(uint32_t crc32c,
 		sse42_supported = __get_cpuid(1, &eax, &ebx, &ecx, &edx) && (ecx & bit_SSE4_2) != 0;
 	if (sse42_supported) {
 		return (sse42_crc32c(crc32c, buffer, length));
-	} else
-#endif
-#if defined(__aarch64__)
-	if ((elf_hwcap & HWCAP_CRC32) != 0) {
-		return (armv8_crc32c(crc32c, buffer, length));
 	} else
 #endif
 	if (length < 4) {

@@ -15,7 +15,11 @@ if get_option('libmd')
 	add_project_arguments('-DUSE_LIBMD', language: 'c')
 endif
 
-brzip = executable('brzip', 'brzip.c', 'gsb_crc32.c', c_args: '-D_FILE_OFFSET_BITS=64', dependencies: deps, install: true)
+srcs = ['brzip.c', 'gsb_crc32.c']
+if host_machine.cpu_family() == 'x86' or host_machine.cpu_family() == 'x86_64'
+	srcs += ['crc32_sse42.c']
+endif
+brzip = executable('brzip', sources: srcs, c_args: '-D_FILE_OFFSET_BITS=64', dependencies: deps, install: true)
 
 install_man('brzip.1')
 
