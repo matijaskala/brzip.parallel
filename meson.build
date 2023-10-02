@@ -1,4 +1,4 @@
-project('brzip', 'c', version: '0.1')
+project('brzip', 'c', version: '0.2.1')
 
 libbrotlienc = dependency('libbrotlienc')
 libbrotlidec = dependency('libbrotlidec')

@@ -362,6 +362,7 @@ static void *comp_worker(courier_t arg) {
 		switch (arg->check_type) {
 				XXH32_hash_t xxh32sum;
 				XXH64_hash_t xxh64sum;
+				uint32_t crc32csum;
 			case 0:
 			case 1:
 			case 2:
@@ -378,6 +379,14 @@ static void *comp_worker(courier_t arg) {
 					xxh64sum >>= 8;
 				}
 				break;
+			case 4:
+			case 5:
+			case 6:
+				crc32csum = ~calculate_crc32c(~0, packet->data, packet->size);
+				for (uint8_t i = 0; i < 1 << (arg->check_type - 4); i++) {
+					*next_out++ = crc32csum & 0xff;
+					crc32csum >>= 8;
+				}
 		}
 		free(packet->data);
 		errno = pthread_mutex_lock(&arg->omutex);
@@ -900,7 +909,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 		offset++;
 		available_in--;
 		next_in++;
-		if (!available_in) {
+		if (!available_in && content_mask != 047) {
 			next_in = input_buffer;
 			available_in = fread(input_buffer, 1, input_buffer_length, in);
 			if (!available_in) {
@@ -1284,7 +1293,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 1 << check_type);
 				XXH64_update(xxh64full, digest, 1 << check_type);
-				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 1 << check_type);
+				crc32cfull = ~calculate_crc32c(~crc32cfull, digest, 1 << check_type);
 				break;
 			case 3:
 				xxh64sum = XXH64_digest(xxh64);
@@ -1307,7 +1316,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 1 << check_type);
 				XXH64_update(xxh64full, digest, 1 << check_type);
-				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 1 << check_type);
+				crc32cfull = ~calculate_crc32c(~crc32cfull, digest, 1 << check_type);
 				break;
 			case 4:
 			case 5:
@@ -1331,7 +1340,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 1 << (check_type - 4));
 				XXH64_update(xxh64full, digest, 1 << (check_type - 4));
-				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 1 << (check_type - 4));
+				crc32cfull = ~calculate_crc32c(~crc32cfull, digest, 1 << (check_type - 4));
 				break;
 			case 7:
 				if (content_mask & 040)
@@ -1355,7 +1364,7 @@ static bool brzip_decompress1(const char *input_str, const char *output_str, FIL
 				}
 				XXH32_update(xxh32full, digest, 32);
 				XXH64_update(xxh64full, digest, 32);
-				crc32csum = ~calculate_crc32c(~crc32cfull, digest, 32);
+				crc32cfull = ~calculate_crc32c(~crc32cfull, digest, 32);
 				break;
 			default:
 				warnx("%s: corrupt input", input_str);
