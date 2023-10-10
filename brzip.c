@@ -1595,13 +1595,13 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 		}
 		if (!f) {
 			f = strdup(input_file);
-			if (!output_file)
+			if (!f)
 				err(1, "strdup");
-			size_t l = strlen(output_file);
-			if (l >= 4 && f[l-3] == '.' && f[l-2] == 'b' && f[l-2] == 'r')
+			size_t l = strlen(f);
+			if (l >= 4 && f[l-3] == '.' && f[l-2] == 'b' && f[l-1] == 'r')
 				f[l-3] = 0;
-			else if (l >= 5 && f[l-4] == '.' && f[l-3] == 't' && f[l-2] == 'b' && f[l-2] == 'r')
-				f[l-3] = 'a';
+			else if (l >= 5 && f[l-4] == '.' && f[l-3] == 't' && f[l-2] == 'b' && f[l-1] == 'r')
+				f[l-2] = 'a';
 			else {
 				warnx("%s: unknown suffix -- ignored", input_file);
 				free(f);
@@ -1610,6 +1610,7 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 				return false;
 			}
 		}
+		output_file = f;
 		int outfd = open(output_file, O_WRONLY | O_CREAT | (force ? O_TRUNC : O_EXCL), 0600);
 		if (outfd < 0) {
 			warn("%s", f);
@@ -1618,7 +1619,6 @@ static bool brzip_decompress_file(uint32_t nthreads, const char *input_file, boo
 				err(1, "%s", input_file);
 			return false;
 		}
-		output_file = f;
 		out = fdopen(outfd, "wb");
 		if (!out) {
 			warn("%s", output_file);
