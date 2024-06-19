@@ -23,8 +23,6 @@
  * madler@alumni.caltech.edu
  */
 
-#include <sys/cdefs.h>
-
 /*
  * This file is compiled in userspace in order to run ATF unit tests.
  */
